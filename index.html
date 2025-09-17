@@ -16,7 +16,13 @@ body { font-family: Arial; text-align:center; margin:2rem; }
 .square { width:60px; height:60px; position:relative; }
 .light { background:#f0d9b5; }
 .dark { background:#b58863; }
-.piece { width:100%; height:100%; cursor:grab; display:flex; align-items:center; justify-content:center; }
+.square.selected::after {
+  content:"";
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  background: rgba(128,128,128,0.4); /* grey overlay */
+  pointer-events:none;
+}
+.piece { width:100%; height:100%; display:flex; align-items:center; justify-content:center; cursor:pointer; }
 .piece img { width:80%; height:80%; pointer-events:none; }
 #unlock { display:none; margin-top:2rem; font-size:1.2rem; color:green; }
 .correct { box-shadow: 0 0 0 4px green inset; transition: box-shadow 0.5s; }
@@ -27,7 +33,7 @@ body { font-family: Arial; text-align:center; margin:2rem; }
 <body>
 
 <h2>White to move: Find the winning move!</h2>
-<p>Drag your pieces and place them on the board. The correct move reveals the wedding password!</p>
+<p>Click a piece, then click a square to move it. The correct move reveals the wedding password!</p>
 
 <div id="board"></div>
 <div id="unlock">
@@ -38,7 +44,7 @@ body { font-family: Arial; text-align:center; margin:2rem; }
 <script>
 const board = document.getElementById("board");
 
-// Create 8x8 board first
+// Create 8x8 board
 for(let r=8;r>=1;r--){
   for(let c=0;c<8;c++){
     const sq = document.createElement("div");
@@ -48,7 +54,7 @@ for(let r=8;r>=1;r--){
   }
 }
 
-// Store initial positions to reset
+// Initial positions
 const initialPositions = [
   ["d3","bishop_white"],["b4","queen_white"],["b1","king_white"],["h2","rook_white"],
   ["a2","pawn_white"],["b2","pawn_white"],["c2","pawn_white"],["c1","rook_white"],
@@ -56,58 +62,72 @@ const initialPositions = [
   ["h8","knight_black"],["d8","knight_white"]
 ];
 
-// Function to setup pieces
+// Setup pieces
 function setupPieces(){
-  [...board.children].forEach(sq => sq.innerHTML=""); // clear squares
+  [...board.children].forEach(sq => sq.innerHTML="");
   initialPositions.forEach(pos => addPiece(pos[0],pos[1]));
   document.getElementById("unlock").style.display="none";
   document.getElementById("message").textContent="";
+  selectedPiece = null;
+  selectedSquare = null;
+  [...document.querySelectorAll(".square")].forEach(sq => sq.classList.remove("selected"));
 }
 
-// Add piece function
+// Add a piece
 function addPiece(square,type){
   const sq = [...board.children].find(s => s.dataset.square===square);
   const pieceDiv = document.createElement("div");
   pieceDiv.className="piece";
-  pieceDiv.draggable = true;
   pieceDiv.dataset.type = type;
   const img = document.createElement("img");
-  img.src = type + ".png";  // make sure PNGs exist
+  img.src = type + ".png";
   pieceDiv.appendChild(img);
   sq.appendChild(pieceDiv);
 }
 
-// Setup pieces after board is ready
+// Initialize
 setupPieces();
 
-// Drag-and-drop
-let dragged=null;
+let selectedPiece = null;
+let selectedSquare = null;
 
-document.addEventListener("dragstart",e=>{
-  if(e.target.classList.contains("piece")) dragged = e.target;
-  else if(e.target.parentElement && e.target.parentElement.classList.contains("piece"))
-    dragged = e.target.parentElement;
-});
+// Click-to-move
+board.addEventListener("click", e => {
+  // Find piece if clicked
+  let piece = null;
+  if(e.target.classList.contains("piece")) piece = e.target;
+  else if(e.target.parentElement && e.target.parentElement.classList.contains("piece")) piece = e.target.parentElement;
 
-document.addEventListener("dragover",e=>{
-  if(e.target.classList.contains("square") || e.target.parentElement.classList.contains("square")) e.preventDefault();
-});
+  if(piece){
+    // Deselect if already selected
+    if(selectedPiece === piece){
+      selectedPiece = null;
+      selectedSquare.classList.remove("selected");
+      selectedSquare = null;
+      return;
+    }
+    // Select new piece
+    if(selectedSquare) selectedSquare.classList.remove("selected");
+    selectedPiece = piece;
+    selectedSquare = piece.parentElement;
+    selectedSquare.classList.add("selected");
+    return;
+  }
 
-document.addEventListener("drop",e=>{
-  let target = e.target;
-  while(target && !target.classList.contains("square")) target = target.parentElement;
-  if(target && dragged){
-    e.preventDefault();
-    target.innerHTML="";
-    target.appendChild(dragged);
+  // Clicked a square to move
+  let square = e.target;
+  while(square && !square.classList.contains("square")) square = square.parentElement;
+  if(square && selectedPiece){
+    square.innerHTML = "";
+    square.appendChild(selectedPiece);
 
     // Check move
-    if(dragged.dataset.type==="bishop_white" && target.dataset.square==="h7"){
-      document.getElementById("unlock").style.display="block";
-      target.classList.add("correct");
-      setTimeout(()=>{ target.classList.remove("correct"); }, 1500);
+    if(selectedPiece.dataset.type === "bishop_white" && square.dataset.square === "h7"){
+      document.getElementById("unlock").style.display = "block";
+      square.classList.add("correct");
+      setTimeout(()=>{ square.classList.remove("correct"); }, 1500);
     } else {
-      target.classList.add("wrong");
+      square.classList.add("wrong");
       const funnyMessages = [
         "Whoops! Resetting the board for you.",
         "Nice imagination, terrible execution!",
@@ -116,12 +136,14 @@ document.addEventListener("drop",e=>{
       const msg = funnyMessages[Math.floor(Math.random()*funnyMessages.length)];
       document.getElementById("message").textContent = msg;
       setTimeout(()=>{
-        target.classList.remove("wrong");
+        square.classList.remove("wrong");
         setupPieces();
       }, 1200);
     }
 
-    dragged=null;
+    selectedSquare.classList.remove("selected");
+    selectedPiece = null;
+    selectedSquare = null;
   }
 });
 </script>
