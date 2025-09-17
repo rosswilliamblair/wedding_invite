@@ -79,7 +79,7 @@ function addPiece(square,type){
 }
 
 function setupPieces(){
-  [...board.children].forEach(sq => sq.innerHTML=""); 
+  [...board.children].forEach(sq => sq.innerHTML="");
   initialPositions.forEach(pos => addPiece(pos[0],pos[1]));
   document.getElementById("unlock").style.display="none";
   document.getElementById("message").textContent="";
