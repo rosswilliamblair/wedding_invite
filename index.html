@@ -98,8 +98,10 @@ body::before {
 /* Mobile scaling */
 @media (max-width: 768px) {
   #board {
-    width: 98vw;   /* almost full width */
+    width: 98vmin;   /* use vmin so it scales to the smaller of width/height */
+    height: 98vmin;  /* ensures it's square */
     max-width: none;
+    max-height: none;
   }
 
   #central-container {
