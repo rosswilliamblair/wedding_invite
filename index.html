@@ -17,7 +17,6 @@ body {
   align-items: center;
   min-height: 100vh;
 
-  /* background fix */
   background-image: url("courti.jpg");
   background-size: cover;
   background-position: center;
@@ -31,14 +30,14 @@ body::before {
   content: "";
   position: fixed;
   top:0; left:0; right:0; bottom:0;
-  background: rgba(255,255,255,0.15); /* subtle overlay always visible */
+  background: rgba(255,255,255,0.15);
   z-index: -1;
   pointer-events: none;
 }
 
 /* CENTRAL CONTAINER */
 #central-container {
-  background: rgba(255,255,255,0.9); /* more translucent so background is visible immediately */
+  background: rgba(255,255,255,0.9);
   padding: 1rem 1.5rem;
   border-radius: 12px;
   display: inline-block;
@@ -74,6 +73,24 @@ body::before {
 /* TEXT & MESSAGES */
 #unlock { display:none; margin-top:1rem; font-size:1.2rem; color:green; }
 #message { margin-top:0.5rem; font-size:1.2rem; color:red; }
+#attempt-counter { margin-top:0.5rem; font-size:1.1rem; color:#333; }
+#grade-message {
+  font-size: 1.1rem;       /* same as moves */
+  color: #000;
+  text-align: center;
+  margin: 0.5rem 0;        /* spacing above and below */
+  line-height: 1.4;        /* consistent spacing */
+}
+
+#grade-message .grade-letter {
+  font-weight: bold;
+}
+
+#grade-message .grade-text {
+  font-weight: normal;
+  display: block;
+  margin-top: 0.3rem;      /* space below the letter line */
+}
 
 /* BUTTON */
 #wedding-link {
@@ -82,7 +99,7 @@ body::before {
   font-size:1rem;
   border-radius:6px;
   border:none;
-  background: #4CAF50;      /* green for disabled */
+  background: #4CAF50;
   color:white;
   cursor:not-allowed;
   opacity:0.6;
@@ -92,23 +109,22 @@ body::before {
 #wedding-link.enabled {
   cursor:pointer;
   opacity:1;
-  background: #28a745;     /* brighter green when enabled */
+  background: #28a745;
 }
 
 /* Mobile scaling */
 @media (max-width: 768px) {
   #board {
-    width: 98vmin;   /* use vmin so it scales to the smaller of width/height */
-    height: 98vmin;  /* ensures it's square */
+    width: 98vmin;
+    height: 98vmin;
     max-width: none;
     max-height: none;
   }
 
   #central-container {
-    padding: 0.5rem; /* tighter container padding */
+    padding: 0.5rem;
   }
 }
-
 </style>
 </head>
 <body>
@@ -126,9 +142,10 @@ body::before {
   </div>
 
   <div id="message"></div>
+  <div id="attempt-counter">Moves: 0</div>
+  <div id="grade-message"></div>
 
   <button id="wedding-link" disabled>Go to Wedding Website</button>
-  
 </div>
 
 <script>
@@ -136,7 +153,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
 const board = document.getElementById("board");
 
-// Create 8x8 board
+// --- Attempt counter ---
+let attempts = 0;
+const counterDiv = document.getElementById("attempt-counter");
+const gradeDiv = document.getElementById("grade-message");
+
+// --- Grade messages ---
+const gradeMessages = {
+  "A*": "Legendary! Top table, champagne flowing, prepare your speech.",
+  "A": "Primetime! Table 3. Party central without even trying—well played.",
+  "B": "Meh. Table 9. Near the bathrooms. Don’t drop your napkin.",
+  "C": "Ouch. Table 36. You’ll be seated in the chicken coup—bring binoculars.",
+  "D": "Seriously? Table 82. You get one bread roll and a chair that wobbles.",
+  "E": "Table 145. You might as well be invisible. Or a dying houseplant.",
+  "F": "Table 235. You’re in the next town over, we’ll Deliveroo your dinner.",
+  "U": "We’ve put you in the broom cupboard. Bring a sleeping bag."
+};
+
+// --- Create 8x8 board ---
 for(let r=8;r>=1;r--){
   for(let c=0;c<8;c++){
     const sq = document.createElement("div");
@@ -146,7 +180,7 @@ for(let r=8;r>=1;r--){
   }
 }
 
-// Initial piece positions
+// --- Initial piece positions ---
 const initialPositions = [
   ["d3","bishop_white"],["b4","queen_white"],["b1","king_white"],["h2","rook_white"],
   ["a2","pawn_white"],["b2","pawn_white"],["c2","pawn_white"],["c1","rook_white"],
@@ -154,7 +188,7 @@ const initialPositions = [
   ["h8","knight_black"],["d8","knight_white"]
 ];
 
-// ADD PIECES
+// --- Add pieces ---
 function addPiece(square,type){
   const sq = [...board.children].find(s => s.dataset.square===square);
   const pieceDiv = document.createElement("div");
@@ -167,13 +201,13 @@ function addPiece(square,type){
   sq.appendChild(pieceDiv);
 }
 
-// RESET BOARD
+// --- Reset board ---
 function setupPieces(){
   [...board.children].forEach(sq => sq.innerHTML="");
   initialPositions.forEach(pos => addPiece(pos[0],pos[1]));
-  document.getElementById("unlock").style.display="block"; // background always visible
   document.getElementById("unlock").style.display="none";
   document.getElementById("message").textContent="";
+  gradeDiv.textContent = "";
   const btn = document.getElementById("wedding-link");
   btn.disabled = true;
   btn.classList.remove("enabled");
@@ -231,12 +265,33 @@ let selectedSquare = null;
 
 // ---- MOVE CHECK ----
 function checkMove(piece,target){
+  attempts++;
+  counterDiv.textContent = "Moves: " + attempts;
+
   if(piece.dataset.type==="bishop_white" && target.dataset.square==="h7"){
     document.getElementById("unlock").style.display="block";
     target.classList.add("correct");
     document.getElementById("wedding-link").disabled = false;
     document.getElementById("wedding-link").classList.add("enabled");
+
+    // --- Grade ---
+    let grade;
+    switch(attempts){
+      case 1: grade = "A*"; break;
+      case 2: grade = "A"; break;
+      case 3: grade = "B"; break;
+      case 4: grade = "C"; break;
+      case 5: grade = "D"; break;
+      case 6: grade = "E"; break;
+      case 7: grade = "F"; break;
+      default: grade = "U"; break;
+    }
+
+    gradeDiv.innerHTML = 'Grade: <span class="grade-letter">' + grade + '</span>' +
+                         '<span class="grade-text">' + gradeMessages[grade] + '</span>';
+
     setTimeout(()=>{ target.classList.remove("correct"); },1500);
+
   } else {
     target.classList.add("wrong");
     const funnyMessages = [
